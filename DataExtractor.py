@@ -9,6 +9,7 @@ def load_wav_data(file, label):
 
 
 class DataExtractor:
+
     data_prefix_path = None
     dataset = None
     meta_data = None
