@@ -3,6 +3,7 @@ from os import walk
 
 
 class DataCleaner:
+
     original_meta_data_path = '../Bird_Songs/metadata.csv'
     cleaned_meta_data_path = '../Bird_Songs/metadata_trimmed.csv'
     path_for_files_to_exclude = "../Bird_Songs/Too_Large_Files"
