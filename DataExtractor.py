@@ -15,7 +15,7 @@ class DataExtractor:
     meta_data = None
     padding_size = None
 
-    def __init__(self, data_prefix_path, meta_data_file_name, padding_size: 31170287 ):
+    def __init__(self, data_prefix_path, meta_data_file_name, padding_size=31170287):
         self.data_prefix_path = data_prefix_path
         self.meta_data = pd.read_csv(self.data_prefix_path + meta_data_file_name)
         self.padding_size = padding_size
