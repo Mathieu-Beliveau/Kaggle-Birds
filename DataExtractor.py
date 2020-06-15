@@ -20,8 +20,15 @@ class DataExtractor:
         self.dataset = self.__load_file_and_labels_dataset(self)
         self.dataset = self.dataset.shuffle(self.meta_data.shape[0])
         self.dataset = self.dataset.map(load_wav_data)
-        #Current Largest tensor dim for wav length: 31170287
-        self.dataset = self.dataset.padded_batch(20, padded_shapes=([31170287, 1], [50,]))
+        # Current Largest tensor dim for wav length: 31170287
+        self.dataset = self.dataset.padded_batch(20, padded_shapes=([31170287, 1], [50, ]))
+
+    def get_max_wav_length(self):
+        max_shape = 0
+        for wav, one_hot in self.dataset:
+            if wav.shape[0] > max_shape:
+                max_shape = wav.shape[0]
+        return max_shape
 
     @staticmethod
     def __load_file_and_labels_dataset(self):
@@ -34,8 +41,3 @@ class DataExtractor:
     def __transform_labels_to_one_hot_vector(self, labels):
         labels_df = pd.DataFrame(labels)
         return pd.get_dummies(labels_df, dtype=float).values
-
-
-
-
-
