@@ -15,7 +15,7 @@ class DataExtractor:
     meta_data = None
     padding_size = None
 
-    def __init__(self, data_prefix_path, meta_data_file_name, padding_size=31170287):
+    def __init__(self, data_prefix_path, meta_data_file_name, padding_size):
         self.data_prefix_path = data_prefix_path
         self.meta_data = pd.read_csv(self.data_prefix_path + meta_data_file_name)
         self.padding_size = padding_size
@@ -24,7 +24,6 @@ class DataExtractor:
         self.dataset = self.__load_file_and_labels_dataset()
         self.dataset = self.dataset.shuffle(self.meta_data.shape[0])
         self.dataset = self.dataset.map(load_wav_data)
-        # Current Largest tensor dim for wav length: 31170287
         self.dataset = self.dataset.padded_batch(20, padded_shapes=([self.padding_size, 1], [50, ]))
 
     def get_max_wav_length(self):
