@@ -18,22 +18,22 @@ class DataExtractor:
         self.means_file_path = means_file_path
         self.std_deviation_file_path = std_deviation_file_path
         if means_file_path is not None and std_deviation_file_path is not None:
-            self.load_means_and_std_deviation(means_file_path, std_deviation_file_path)
+            self.__load_means_and_std_deviation(means_file_path, std_deviation_file_path)
         self.__create_dataset()
 
     def __create_dataset(self):
         self.dataset = self.__load_file_and_labels_dataset()
         self.dataset = self.dataset.shuffle(self.meta_data.dataset_size)
-        self.dataset = self.dataset.map(lambda wav, label: self.load_wav_data(wav, label))
+        self.dataset = self.dataset.map(lambda wav, label: self.__load_wav_data(wav, label))
         return self.dataset
 
-    def load_means_and_std_deviation(self, means_file_path, std_deviation_file_path):
+    def __load_means_and_std_deviation(self, means_file_path, std_deviation_file_path):
         means_content = tf.io.read_file(means_file_path)
         self.means = tf.io.parse_tensor(means_content, tf.float32)
         std_deviation_content = tf.io.read_file(std_deviation_file_path)
         self.std_deviation = tf.io.parse_tensor(std_deviation_content, tf.float32)
 
-    def load_wav_data(self, file, label):
+    def __load_wav_data(self, file, label):
         wav = tf.io.read_file(file)
         wav_tensor, sample_rate = tf.audio.decode_wav(wav)
         wav_len = tf.shape(wav_tensor)[0]
