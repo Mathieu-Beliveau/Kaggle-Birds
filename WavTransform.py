@@ -1,6 +1,6 @@
 import librosa as rosa
 import os
-import numpy as np
+
 
 class WavTransform:
 
