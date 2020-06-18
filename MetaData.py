@@ -14,4 +14,4 @@ class MetaData:
         return [self.source_data_path + path[4:-3] + "wav" for path in self.info["Path"]]
 
     def get_work_data_paths(self):
-        return [self.work_data_path + path[4:-3] + "wav" for path in self.info["Path"]]
+        return [self.work_data_path + path[4:-3] + "mel_spec" for path in self.info["Path"]]

@@ -24,8 +24,14 @@ class DataExtractor:
     def __create_dataset(self):
         self.dataset = self.__load_file_and_labels_dataset()
         self.dataset = self.dataset.shuffle(self.meta_data.dataset_size)
-        self.dataset = self.dataset.map(lambda wav, label: self.__load_wav_data(wav, label))
+        self.dataset = self.dataset.map(lambda data, label: self.__load_spectrogram_data(data, label))
         return self.dataset
+
+    def __load_file_and_labels_dataset(self):
+        species = self.meta_data.info["Species"]
+        paths = [tf.constant(path) for path in self.meta_data.get_work_data_paths()]
+        one_hot_labels = self.__transform_labels_to_one_hot_vector(self, species)
+        return tf.data.Dataset.from_tensor_slices((paths, one_hot_labels))
 
     def __load_means_and_std_deviation(self, means_file_path, std_deviation_file_path):
         means_content = tf.io.read_file(means_file_path)
@@ -44,6 +50,17 @@ class DataExtractor:
             wav_tensor = tf.divide(wav_tensor, self.std_deviation)
         return wav_tensor, label
 
+    def __load_spectrogram_data(self, file, label):
+        spectrogram = tf.io.read_file(file)
+        spectrogram_tensor = tf.io.parse_tensor(spectrogram, tf.float32)
+        spectrogram_length = tf.shape(spectrogram_tensor)[1]
+        pad_len = tf.subtract(self.padding_size, spectrogram_length)
+        spectrogram_tensor = tf.pad(spectrogram_tensor, [[0, 0], [0, pad_len]])
+        # if self.means is not None and self.std_deviation is not None:
+        #     spectrogram_tensor = tf.subtract(spectrogram_tensor, self.means)
+        #     spectrogram_tensor = tf.divide(spectrogram_tensor, self.std_deviation)
+        return spectrogram_tensor, label
+
     def get_datasets(self, train_ratio, validation_ratio, test_ratio, epochs=1):
         if train_ratio + validation_ratio + test_ratio != 1:
             raise Exception("invalid train, validation or test ratios; they must sum to 1.")
@@ -56,11 +73,11 @@ class DataExtractor:
         test_data = test_dataset.skip(validation_size).batch(self.batch_size)
         return train_data, validation_data, test_data
 
-    def get_max_wav_length(self):
+    def get_max_data_tensor_length(self):
         max_shape = 0
-        for wav, one_hot in self.dataset:
-            if wav.shape[0] > max_shape:
-                max_shape = wav.shape[0]
+        for data_tensor, one_hot in self.dataset:
+            if data_tensor.shape[1] > max_shape:
+                max_shape = data_tensor.shape[1]
         return max_shape
 
     def get_dataset_mean(self, padding_size,  means_file_name):
@@ -89,12 +106,6 @@ class DataExtractor:
         sd = tf.sqrt(sd)
         serialized_variance = tf.io.serialize_tensor(sd)
         tf.io.write_file(variance_file_name, serialized_variance)
-
-    def __load_file_and_labels_dataset(self):
-        species = self.meta_data.info["Species"]
-        paths = [tf.constant(path) for path in self.meta_data.get_work_data_paths()]
-        one_hot_labels = self.__transform_labels_to_one_hot_vector(self, species)
-        return tf.data.Dataset.from_tensor_slices((paths, one_hot_labels))
 
     @staticmethod
     def __transform_labels_to_one_hot_vector(self, labels):
