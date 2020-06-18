@@ -56,6 +56,7 @@ class DataExtractor:
         spectrogram_length = tf.shape(spectrogram_tensor)[1]
         pad_len = tf.subtract(self.padding_size, spectrogram_length)
         spectrogram_tensor = tf.pad(spectrogram_tensor, [[0, 0], [0, pad_len]])
+        spectrogram_tensor = tf.reshape(spectrogram_tensor, (128, self.padding_size, 1))
         # if self.means is not None and self.std_deviation is not None:
         #     spectrogram_tensor = tf.subtract(spectrogram_tensor, self.means)
         #     spectrogram_tensor = tf.divide(spectrogram_tensor, self.std_deviation)

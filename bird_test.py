@@ -31,16 +31,13 @@ train_data, validation_data, test_data = dataExtractor.get_datasets(train_ratio=
 x = 1
 #
 model = models.Sequential()
-model.add(layers.Conv2D(32, (10, 10), activation='relu', input_shape=(128, padding_size, 1)))
-model.add(layers.MaxPooling2D((2, 2)))
-model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-model.add(layers.MaxPooling2D((2, 2)))
-model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.Conv2D(8, (128, 5), strides=(1, 1), activation='relu', data_format='channels_last'))
+model.add(layers.MaxPooling2D((1, 2)))
 model.add(layers.Flatten())
 model.add(layers.Dense(64, activation='relu'))
 model.add(layers.Dense(50, activation='softmax'))
-
-model.compile(optimizer='adam',
+optimizer = tf.keras.optimizers.Adam(lr=0.001)
+model.compile(optimizer=optimizer,
               loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
 
