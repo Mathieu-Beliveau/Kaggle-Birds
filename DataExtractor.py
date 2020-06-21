@@ -1,6 +1,8 @@
 import pandas as pd
 import tensorflow as tf
-
+from random import shuffle
+import pickle
+import os
 
 class DataExtractor:
 
@@ -23,15 +25,25 @@ class DataExtractor:
 
     def __create_dataset(self):
         self.dataset = self.__load_file_and_labels_dataset()
-        self.dataset = self.dataset.shuffle(self.meta_data.dataset_size)
         self.dataset = self.dataset.map(lambda data, label: self.__load_spectrogram_data(data, label))
         return self.dataset
 
     def __load_file_and_labels_dataset(self):
-        species = self.meta_data.info["Species"]
-        paths = [tf.constant(path) for path in self.meta_data.get_work_data_paths()]
-        one_hot_labels = self.__transform_labels_to_one_hot_vector(self, species)
-        return tf.data.Dataset.from_tensor_slices((paths, one_hot_labels))
+        suffled_paths_file = self.meta_data.base_path + "suffled_paths.pkl"
+        if os.path.isfile(suffled_paths_file):
+            with open(suffled_paths_file, 'rb') as f:
+                paths_labels_pairs = pickle.load(f)
+        else:
+            species = self.meta_data.info["Species"]
+            paths = [tf.constant(path) for path in self.meta_data.get_work_data_paths()]
+            one_hot_labels = self.__transform_labels_to_one_hot_vector(self, species)
+            paths_labels_pairs = [[path, label] for path, label in zip(paths, one_hot_labels)]
+            shuffle(paths_labels_pairs)
+            with open(suffled_paths_file, 'wb') as f:
+                pickle.dump(paths_labels_pairs, f)
+        shuffled_paths = [path for path, _ in paths_labels_pairs]
+        shuffled_labels = [label for _, label in paths_labels_pairs]
+        return tf.data.Dataset.from_tensor_slices((shuffled_paths, shuffled_labels))
 
     def __load_means_and_std_deviation(self, means_file_path, std_deviation_file_path):
         means_content = tf.io.read_file(means_file_path)

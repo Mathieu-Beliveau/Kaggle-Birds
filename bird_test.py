@@ -6,19 +6,17 @@ import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
 import matplotlib.pyplot as plt
 
-# Current Largest tensor dim for wav length: 31170287
-# padding_size = 31170287
-# padding_size = 2875046 (downsampled wav)
 batch_size = 5
 padding_size = 11996
-source_data_path = "../Bird_Songs/Wav/"
-work_data_path = "../Bird_Songs/spectrograms/"
-source_meta_data_file_path = "../Bird_Songs/metadata.csv"
-work_meta_data_file_path = "../Bird_Songs/metadata_trimmed.csv"
-dataset_means_file_path = "../Bird_Songs/means.tf"
-dataset_standard_deviation_file_path = "../Bird_Songs/standard_deviation.tf"
+base_path = "../Bird_Songs/"
+source_data_path = "/Wav/"
+work_data_path = "/spectrograms/"
+source_meta_data_file_path = "metadata.csv"
+work_meta_data_file_path = "metadata_trimmed.csv"
 
-meta_data = Mt.MetaData(source_data_path, work_data_path, source_meta_data_file_path, work_meta_data_file_path)
+meta_data = Mt.MetaData(base_path, source_data_path, work_data_path,
+                        source_meta_data_file_path, work_meta_data_file_path)
+
 # data_cleaner = DataCleaner.DataCleaner(meta_data)
 # data_cleaner.clean()
 
@@ -38,14 +36,19 @@ model.add(layers.MaxPooling2D((2, 2)))
 model.add(layers.Conv2D(8, (10, 10), strides=(2, 2), activation='relu'))
 model.add(layers.MaxPooling2D((2, 2)))
 model.add(layers.Flatten())
-model.add(layers.Dense(30, activation='relu'))
+model.add(layers.Dense(64, activation='relu'))
 model.add(layers.Dense(8, activation='softmax'))
 model.summary()
 optimizer = tf.keras.optimizers.Adam(lr=0.0001)
 model.compile(optimizer=optimizer,
               loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
-history = model.fit(x=train_data, epochs=20, validation_data=validation_data)
+
+filepath = "../Bird_Songs/Models/"
+checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath)
+callbacks_list = [checkpoint]
+
+history = model.fit(x=train_data, epochs=20, validation_data=validation_data, callbacks=callbacks_list)
 
 plt.plot(history.history['accuracy'], label='accuracy')
 plt.plot(history.history['val_accuracy'], label='val_accuracy')
@@ -53,6 +56,13 @@ plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.ylim([0.5, 1])
 plt.legend(loc='lower right')
+
+# test_history = model.evaluate(x=test_data)
+# plt.plot(test_history.history['accuracy'], label='accuracy')
+# plt.xlabel('Epoch')
+# plt.ylabel('Accuracy')
+# plt.ylim([0.5, 1])
+# plt.legend(loc='lower right')
 
 
 # Utility code

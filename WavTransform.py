@@ -35,13 +35,13 @@ class WavTransform:
         mel_spectogram = rosa.feature.melspectrogram(y, sr, n_fft=n_fft, hop_length=hop_length,
                                                      win_length=win_length)
         s_db = rosa.power_to_db(mel_spectogram, ref=np.max)
-        s_db = np.clip(s_db, a_min=-40, a_max=None)
+        # s_db = np.clip(s_db, a_min=-40, a_max=None)
         # rosa.display.specshow(s_db, sr=sr, hop_length=hop_length, x_axis='time', y_axis='mel')
         s_db_normalized = rosa.util.normalize(s_db)
         # rosa.display.specshow(s_db_normalized, sr=sr, hop_length=hop_length, x_axis='time', y_axis='mel')
         # plt.colorbar(format='%+2.0f dB')
         # plt.show()
-        serialized_mel_spectogram = tf.io.serialize_tensor(s_db)
+        serialized_mel_spectogram = tf.io.serialize_tensor(s_db_normalized)
         tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ".mel_spec", serialized_mel_spectogram)
 
     def downsample_wavs(self,  target_sample_rate):
