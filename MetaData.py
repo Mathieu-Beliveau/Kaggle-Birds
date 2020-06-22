@@ -2,7 +2,6 @@ import pandas as pd
 import os
 
 
-
 class MetaData:
 
     def __init__(self, base_path, source_data_path, work_data_path, source_meta_data_file_path, work_meta_data_file_path):

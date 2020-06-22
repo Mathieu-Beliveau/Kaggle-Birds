@@ -13,11 +13,12 @@ class DataExtractor:
     means = None
     std_deviation = None
 
-    def __init__(self, meta_data, padding_size, batch_size, means_file_path=None, std_deviation_file_path=None):
-        self.padding_size = padding_size
+    def __init__(self, meta_data, batch_size, means_file_path=None, std_deviation_file_path=None):
         self.meta_data = meta_data
         self.batch_size = batch_size
         self.means_file_path = means_file_path
+        self.padding_size_file_path = self.meta_data.base_path + "padding_size.pkl"
+        self.__get_padding_size()
         self.std_deviation_file_path = std_deviation_file_path
         if means_file_path is not None and std_deviation_file_path is not None:
             self.__load_means_and_std_deviation(means_file_path, std_deviation_file_path)
@@ -26,7 +27,20 @@ class DataExtractor:
     def __create_dataset(self):
         self.dataset = self.__load_file_and_labels_dataset()
         self.dataset = self.dataset.map(lambda data, label: self.__load_spectrogram_data(data, label))
+        if self.padding_size is None:
+            self.padding_size = self.__get_max_data_tensor_length()
+            with open(self.padding_size_file_path, 'wb') as f:
+                pickle.dump(self.padding_size, f)
+            self.dataset = self.__load_file_and_labels_dataset()
+            self.dataset = self.dataset.map(lambda data, label: self.__load_spectrogram_data(data, label))
         return self.dataset
+
+    def __get_padding_size(self):
+        if os.path.isfile(self.padding_size_file_path):
+            with open(self.padding_size_file_path, 'rb') as f:
+                self.padding_size = pickle.load(f)
+        else:
+            return None
 
     def __load_file_and_labels_dataset(self):
         suffled_paths_file = self.meta_data.base_path + "suffled_paths.pkl"
@@ -65,14 +79,22 @@ class DataExtractor:
     def __load_spectrogram_data(self, file, label):
         spectrogram = tf.io.read_file(file)
         spectrogram_tensor = tf.io.parse_tensor(spectrogram, tf.float32)
-        spectrogram_length = tf.shape(spectrogram_tensor)[1]
-        pad_len = tf.subtract(self.padding_size, spectrogram_length)
-        spectrogram_tensor = tf.pad(spectrogram_tensor, [[0, 0], [0, pad_len]])
-        spectrogram_tensor = tf.reshape(spectrogram_tensor, (128, self.padding_size, 1))
-        if self.means is not None and self.std_deviation is not None:
-            spectrogram_tensor = tf.subtract(spectrogram_tensor, self.means)
-            spectrogram_tensor = tf.divide(spectrogram_tensor, self.std_deviation)
+        if self.padding_size is not None:
+            self.__pad_dataset(spectrogram_tensor)
         return spectrogram_tensor, label
+
+    def __pad_dataset(self, tensor):
+        spectrogram_length = tf.shape(tensor)[1]
+        pad_len = tf.subtract(self.padding_size, spectrogram_length)
+        padded_tensor = tf.pad(tensor, [[0, 0], [0, pad_len]])
+        padded_tensor = tf.reshape(padded_tensor, (128, self.padding_size, 1))
+        return padded_tensor
+
+    def __standardize_dataset(self,  tensor, label):
+        if self.means is not None and self.std_deviation is not None:
+            tensor = tf.subtract(tensor, self.means)
+            tensor = tf.divide(tensor, self.std_deviation)
+        return tensor, label
 
     def get_datasets(self, train_ratio, validation_ratio, test_ratio, epochs=1):
         if train_ratio + validation_ratio + test_ratio != 1:
@@ -86,14 +108,14 @@ class DataExtractor:
         test_data = test_dataset.skip(validation_size).batch(self.batch_size)
         return train_data, validation_data, test_data
 
-    def get_max_data_tensor_length(self):
+    def __get_max_data_tensor_length(self):
         max_shape = 0
         for data_tensor, one_hot in self.dataset:
             if data_tensor.shape[1] > max_shape:
                 max_shape = data_tensor.shape[1]
         return max_shape
 
-    def get_dataset_mean(self, padding_size,  means_file_name):
+    def get_dataset_mean(self,  means_file_name):
         mean = tf.constant([0.0])
         counts = 0
         for wav, one_hot in self.dataset:
@@ -104,7 +126,7 @@ class DataExtractor:
         serialized_mean = tf.io.serialize_tensor(mean)
         tf.io.write_file(means_file_name, serialized_mean)
 
-    def get_dataset_standard_deviation(self, padding_size, means_file_name,  variance_file_name):
+    def get_dataset_standard_deviation(self, means_file_name,  variance_file_name):
         sd = tf.constant([0.0])
         content = tf.io.read_file(means_file_name)
         mean = tf.io.parse_tensor(content, tf.float32)
