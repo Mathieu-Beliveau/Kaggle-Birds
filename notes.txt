@@ -1,0 +1,11 @@
+Mel Spectrograms Parameters:
+
+n_fft = 512
+hop_length = 256
+win_length = 512
+Resulting accuracy on validation: 0.6
+
+n_fft = 1024
+hop_length = 128
+win_length = 512
+Resulting accuracy on validation: ???

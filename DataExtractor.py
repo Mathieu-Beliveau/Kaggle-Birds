@@ -80,7 +80,7 @@ class DataExtractor:
         spectrogram = tf.io.read_file(file)
         spectrogram_tensor = tf.io.parse_tensor(spectrogram, tf.float32)
         if self.padding_size is not None:
-            self.__pad_dataset(spectrogram_tensor)
+            spectrogram_tensor = self.__pad_dataset(spectrogram_tensor)
         return spectrogram_tensor, label
 
     def __pad_dataset(self, tensor):

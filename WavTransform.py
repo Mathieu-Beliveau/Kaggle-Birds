@@ -2,19 +2,21 @@ import librosa as rosa
 import librosa.display
 import os
 import multiprocessing
-import threading
 import concurrent.futures
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import normalize
+
 
 class WavTransform:
 
     meta_data = None
 
-    def __init__(self, meta_data):
+    def __init__(self, meta_data, display_spectrograms=False, use_clipping=True, trim_silence=True):
         self.meta_data = meta_data
+        self.display_spectrograms = display_spectrograms
+        self.use_clipping = use_clipping
+        self.trim_silence = trim_silence
 
     def generate_mel_spectograms(self):
         paths = self.meta_data.get_source_data_paths()
@@ -25,26 +27,26 @@ class WavTransform:
         #     self.generate_mel_spectrogram_thread(path)
 
     def generate_mel_spectrogram_thread(self, path):
-        # Previous Params: (0.6 accuracy on validation)
-        # n_fft = 512
-        # hop_length = 256
-        # win_length = 512
         target_sample_rate = 16000
-        n_fft = 256
-        hop_length = 128
-        win_length = 256
+        n_fft = 1024
+        hop_length = 512
+        win_length = 1024
         file_name = os.path.basename(path)
         y, sr = rosa.load(path, mono=True, sr=target_sample_rate)
-        rosa.effects.trim(y)
+        if self.trim_silence:
+            rosa.effects.trim(y)
+
         mel_spectogram = rosa.feature.melspectrogram(y, sr, n_fft=n_fft, hop_length=hop_length,
                                                      win_length=win_length)
         s_db = rosa.power_to_db(mel_spectogram, ref=np.max)
-        #s_db = np.clip(s_db, a_min=-40, a_max=None)
-        # rosa.display.specshow(s_db, sr=sr, hop_length=hop_length, x_axis='time', y_axis='mel')
+        if self.use_clipping:
+            s_db = np.clip(s_db, a_min=-50, a_max=None)
         s_db_normalized = rosa.util.normalize(s_db)
-        rosa.display.specshow(s_db_normalized, sr=sr, hop_length=hop_length, x_axis='time', y_axis='mel')
-        plt.colorbar(format='%+2.0f dB')
-        plt.show()
+        if self.display_spectrograms:
+            rosa.display.specshow(s_db_normalized, sr=sr, hop_length=hop_length, x_axis='time', y_axis='mel')
+            plt.colorbar(format='%+2.0f dB')
+            plt.show()
+            print(s_db_normalized.shape)
         serialized_mel_spectogram = tf.io.serialize_tensor(s_db_normalized)
         tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ".mel_spec", serialized_mel_spectogram)
 
