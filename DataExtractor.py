@@ -1,6 +1,7 @@
+from random import shuffle
+from os import walk
 import pandas as pd
 import tensorflow as tf
-from random import shuffle
 import pickle
 import os
 
@@ -48,10 +49,15 @@ class DataExtractor:
             with open(suffled_paths_file, 'rb') as f:
                 paths_labels_pairs = pickle.load(f)
         else:
-            species = self.meta_data.info["Species"]
-            paths = [tf.constant(path) for path in self.meta_data.get_work_data_paths()]
+            species = []
+            file_paths = []
+            for (dirpath, dirnames, filenames) in walk(self.meta_data.work_data_path):
+                file_paths = filenames
+                for filename in filenames:
+                    label = os.path.splitext(filename)[0][:-5]
+                    species.append(label)
             one_hot_labels = self.__transform_labels_to_one_hot_vector(self, species)
-            paths_labels_pairs = [[path, label] for path, label in zip(paths, one_hot_labels)]
+            paths_labels_pairs = [[path, label] for path, label in zip(file_paths, one_hot_labels)]
             shuffle(paths_labels_pairs)
             with open(suffled_paths_file, 'wb') as f:
                 pickle.dump(paths_labels_pairs, f)
@@ -77,10 +83,13 @@ class DataExtractor:
         return wav_tensor, label
 
     def __load_spectrogram_data(self, file, label):
-        spectrogram = tf.io.read_file(file)
-        spectrogram_tensor = tf.io.parse_tensor(spectrogram, tf.float32)
+        mel_spectrogram = tf.io.read_file(file)
+        mel_spectrogram = tf.io.parse_tensor(mel_spectrogram, tf.float32)
+        chroma_spectrogram = tf.io.read_file(file[:-8] + "chr_spec")
+        chroma_spectrogram = tf.io.parse_tensor(chroma_spectrogram, tf.float32)
+        spectrogram = tf.stack(mel_spectrogram, chroma_spectrogram)
         if self.padding_size is not None:
-            spectrogram_tensor = self.__pad_dataset(spectrogram_tensor)
+            spectrogram_tensor = self.__pad_dataset(spectrogram)
         return spectrogram_tensor, label
 
     def __pad_dataset(self, tensor):
