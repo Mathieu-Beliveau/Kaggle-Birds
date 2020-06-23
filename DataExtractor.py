@@ -4,12 +4,12 @@ import pandas as pd
 import tensorflow as tf
 import pickle
 import os
+import re
 
 class DataExtractor:
 
     meta_data = None
     dataset = None
-    padding_size = None
     dataset_size = None
     means = None
     std_deviation = None
@@ -17,31 +17,13 @@ class DataExtractor:
     def __init__(self, meta_data, batch_size, means_file_path=None, std_deviation_file_path=None):
         self.meta_data = meta_data
         self.batch_size = batch_size
-        self.means_file_path = means_file_path
-        self.padding_size_file_path = self.meta_data.base_path + "padding_size.pkl"
-        self.__get_padding_size()
-        self.std_deviation_file_path = std_deviation_file_path
-        if means_file_path is not None and std_deviation_file_path is not None:
-            self.__load_means_and_std_deviation(means_file_path, std_deviation_file_path)
+        self.label_regex = re.compile('^[^-]*-[^-]*')
         self.__create_dataset()
 
     def __create_dataset(self):
         self.dataset = self.__load_file_and_labels_dataset()
         self.dataset = self.dataset.map(lambda data, label: self.__load_spectrogram_data(data, label))
-        if self.padding_size is None:
-            self.padding_size = self.__get_max_data_tensor_length()
-            with open(self.padding_size_file_path, 'wb') as f:
-                pickle.dump(self.padding_size, f)
-            self.dataset = self.__load_file_and_labels_dataset()
-            self.dataset = self.dataset.map(lambda data, label: self.__load_spectrogram_data(data, label))
         return self.dataset
-
-    def __get_padding_size(self):
-        if os.path.isfile(self.padding_size_file_path):
-            with open(self.padding_size_file_path, 'rb') as f:
-                self.padding_size = pickle.load(f)
-        else:
-            return None
 
     def __load_file_and_labels_dataset(self):
         suffled_paths_file = self.meta_data.base_path + "suffled_paths.pkl"
@@ -54,7 +36,7 @@ class DataExtractor:
             for (dirpath, dirnames, filenames) in walk(self.meta_data.work_data_path):
                 file_paths = filenames
                 for filename in filenames:
-                    label = os.path.splitext(filename)[0][:-5]
+                    label = self.label_regex.match(filename).group()
                     species.append(label)
             one_hot_labels = self.__transform_labels_to_one_hot_vector(self, species)
             paths_labels_pairs = [[path, label] for path, label in zip(file_paths, one_hot_labels)]
@@ -83,21 +65,14 @@ class DataExtractor:
         return wav_tensor, label
 
     def __load_spectrogram_data(self, file, label):
-        mel_spectrogram = tf.io.read_file(file)
+        mel_spectrogram = tf.io.read_file(self.meta_data.work_data_path + file)
         mel_spectrogram = tf.io.parse_tensor(mel_spectrogram, tf.float32)
-        chroma_spectrogram = tf.io.read_file(file[:-8] + "chr_spec")
-        chroma_spectrogram = tf.io.parse_tensor(chroma_spectrogram, tf.float32)
-        spectrogram = tf.stack(mel_spectrogram, chroma_spectrogram)
-        if self.padding_size is not None:
-            spectrogram_tensor = self.__pad_dataset(spectrogram)
-        return spectrogram_tensor, label
-
-    def __pad_dataset(self, tensor):
-        spectrogram_length = tf.shape(tensor)[1]
-        pad_len = tf.subtract(self.padding_size, spectrogram_length)
-        padded_tensor = tf.pad(tensor, [[0, 0], [0, pad_len]])
-        padded_tensor = tf.reshape(padded_tensor, (128, self.padding_size, 1))
-        return padded_tensor
+        # chroma_spectrogram = tf.io.read_file(file[:-8] + "chr_spec")
+        # chroma_spectrogram = tf.io.parse_tensor(chroma_spectrogram, tf.float32)
+        # spectrogram = tf.stack(mel_spectrogram, chroma_spectrogram)
+        spectrogram = mel_spectrogram
+        spectrogram = tf.reshape(spectrogram, (128, 862, 1))
+        return spectrogram, label
 
     def __standardize_dataset(self,  tensor, label):
         if self.means is not None and self.std_deviation is not None:

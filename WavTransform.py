@@ -45,10 +45,12 @@ class WavTransform:
         pad_size = 5
         for audio_tensor in audio_tensors:
             mel_spectrogram = self.generate_mel_spectrogram_thread(audio_tensor, sr)
-            tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ('_%04d' % i) + ".mel_spec", mel_spectrogram)
+            chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
+            stacked_tensor = tf.stack([mel_spectrogram, chroma_spectrogram])
+            stacked_tensor = tf.io.serialize_tensor(stacked_tensor)
+            tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ('_%04d' % i) + ".chr_spec",
+                             stacked_tensor)
             i += 1
-            # chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
-            # tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ".chr_spec", chroma_spectrogram)
 
     def generate_mel_spectrogram_thread(self, audio_tensor, sample_rate):
         n_fft = 512
@@ -64,7 +66,7 @@ class WavTransform:
             plt.colorbar(format='%+2.0f dB')
             plt.show()
             print(s_db.shape)
-        return tf.io.serialize_tensor(s_db)
+        return s_db
 
     def generate_chroma_spectrogram_thread(self,  audio_tensor, sample_rate):
         chroma = librosa.feature.chroma_cens(y=audio_tensor, sr=sample_rate, n_chroma=128, hop_length=self.hop_length)
@@ -74,7 +76,7 @@ class WavTransform:
             plt.colorbar()
             plt.show()
             print(chroma.shape)
-        return tf.io.serialize_tensor(chroma)
+        return chroma
 
     def downsample_wavs(self,  target_sample_rate):
         paths = self.meta_data.get_source_data_paths()
