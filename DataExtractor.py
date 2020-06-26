@@ -65,13 +65,9 @@ class DataExtractor:
         return wav_tensor, label
 
     def __load_spectrogram_data(self, file, label):
-        mel_spectrogram = tf.io.read_file(self.meta_data.work_data_path + file)
-        mel_spectrogram = tf.io.parse_tensor(mel_spectrogram, tf.float32)
-        # chroma_spectrogram = tf.io.read_file(file[:-8] + "chr_spec")
-        # chroma_spectrogram = tf.io.parse_tensor(chroma_spectrogram, tf.float32)
-        # spectrogram = tf.stack(mel_spectrogram, chroma_spectrogram)
-        spectrogram = mel_spectrogram
-        spectrogram = tf.reshape(spectrogram, (128, 862, 1))
+        spectrogram = tf.io.read_file(self.meta_data.work_data_path + file)
+        spectrogram = tf.io.parse_tensor(spectrogram, tf.float32)
+        spectrogram = tf.reshape(spectrogram, (256, 862, 2))
         return spectrogram, label
 
     def __standardize_dataset(self,  tensor, label):

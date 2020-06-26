@@ -4,6 +4,7 @@ import DataCleaner
 import WavTransform
 import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
+from tensorflow.keras.callbacks import LearningRateScheduler
 import matplotlib.pyplot as plt
 import os
 import datetime
@@ -17,7 +18,7 @@ class BirdSongsClassifier:
         self.work_data_path = "/spectrograms/"
         self.weights_filepath = "../Bird_Songs/Models/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
         self.best_weights_file_path = "../Bird_Songs/Models/weights.20-1.50.hdf5"
-        self.load_saved_weights = True
+        self.load_saved_weights = False
         self.log_dir = os.path.join('..\\Bird_Songs\\logs\\fit\\' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         self.batch_size = 5
         self.meta_data = Mt.MetaData(self.base_path, self.source_data_path, self.work_data_path)
@@ -30,6 +31,13 @@ class BirdSongsClassifier:
     def clean_meta_data(self):
         self.meta_data_cleaner.clean()
 
+    @staticmethod
+    def lr_scheduler(epoch, lr):
+        if epoch > 10:
+            lr = 0.00001
+            return lr
+        return lr
+
     def perform_training(self):
         data_extractor = De.DataExtractor(self.meta_data, self.batch_size)
         train_data, validation_data, test_data = data_extractor.get_datasets(train_ratio=0.70,
@@ -37,10 +45,12 @@ class BirdSongsClassifier:
                                                                              test_ratio=0.15)
 
         model = models.Sequential()
-        model.add(layers.Conv2D(16, (10, 10), strides=(2, 2), activation='relu', data_format='channels_last',
-                                input_shape=(128, 862, 1)))
+        model.add(layers.Conv2D(16, (10, 10), strides=(2, 2), input_shape=(256, 862, 2), activation='relu',
+                                data_format='channels_last'))
         model.add(layers.MaxPooling2D((2, 2)))
         model.add(layers.Conv2D(32, (10, 10), strides=(2, 2), activation='relu'))
+        # model.add(layers.MaxPooling2D((2, 2)))
+        # model.add(layers.Conv2D(64, (4, 4), strides=(1, 1), activation='relu'))
         model.add(layers.MaxPooling2D((2, 2)))
         model.add(layers.Flatten())
         model.add(layers.Dense(64, activation='relu'))
@@ -53,7 +63,8 @@ class BirdSongsClassifier:
 
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=self.log_dir, histogram_freq=1)
         checkpoint = tf.keras.callbacks.ModelCheckpoint(self.weights_filepath, save_weights_only=True)
-        callbacks_list = [checkpoint, tensorboard_callback]
+        learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(BirdSongsClassifier.lr_scheduler)
+        callbacks_list = [learning_rate_scheduler, checkpoint, tensorboard_callback]
 
         if self.load_saved_weights and os.path.isfile(self.best_weights_file_path):
             model.load_weights(self.best_weights_file_path)

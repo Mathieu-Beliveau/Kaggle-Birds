@@ -25,10 +25,10 @@ class WavTransform:
         for (dirpath, dirnames, filenames) in os.walk(self.meta_data.source_data_path):
             paths = [dirpath + filename for filename in filenames]
         max_workers = multiprocessing.cpu_count()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            executor.map(self.__generate_spectrograms_thread, paths)
-        # for path in paths:
-        #     self.__generate_spectrograms_thread(path)
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        #     executor.map(self.__generate_spectrograms_thread, paths)
+        for path in paths:
+            self.__generate_spectrograms_thread(path)
 
     def __get_tensor_split_segments(self, sample_rate, tensor):
         segment_samples = sample_rate * self.audio_segment_length_in_sec
@@ -56,7 +56,8 @@ class WavTransform:
         n_fft = 512
         win_length = 512
         mel_spectogram = rosa.feature.melspectrogram(audio_tensor, sample_rate, n_fft=n_fft, hop_length=self.hop_length,
-                                                     win_length=win_length, window=scipy.signal.windows.hanning)
+                                                     win_length=win_length, window=scipy.signal.windows.hanning,
+                                                     n_mels=256, power=4.0)
         s_db = rosa.power_to_db(mel_spectogram, ref=np.max)
         if self.use_clipping:
             s_db = np.clip(s_db, a_min=-50, a_max=None)
@@ -69,7 +70,9 @@ class WavTransform:
         return s_db
 
     def generate_chroma_spectrogram_thread(self,  audio_tensor, sample_rate):
-        chroma = librosa.feature.chroma_cens(y=audio_tensor, sr=sample_rate, n_chroma=128, hop_length=self.hop_length)
+        # chroma = librosa.feature.chroma_stft(y=audio_tensor, sr=sample_rate, hop_length=self.hop_length, n_chroma=128,
+        #                                      win_length=512)
+        chroma = librosa.feature.chroma_cqt(y=audio_tensor, sr=sample_rate, hop_length=self.hop_length, n_chroma=256)
         chroma = rosa.util.normalize(chroma)
         if self.display_spectrograms:
             rosa.display.specshow(chroma, sr=sample_rate, y_axis='chroma', x_axis='time')
