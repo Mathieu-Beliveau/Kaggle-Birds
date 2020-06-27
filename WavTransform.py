@@ -1,4 +1,4 @@
-import librosa as rosa
+import librosa
 import librosa.display
 import os
 import multiprocessing
@@ -18,6 +18,8 @@ class WavTransform:
         self.display_spectrograms = display_spectrograms
         self.use_clipping = use_clipping
         self.hop_length = 256
+        self.win_length = 1024
+        self.y_scale = 128
         self.audio_segment_length_in_sec = 10
 
     def generate_spectrograms(self):
@@ -25,10 +27,10 @@ class WavTransform:
         for (dirpath, dirnames, filenames) in os.walk(self.meta_data.source_data_path):
             paths = [dirpath + filename for filename in filenames]
         max_workers = multiprocessing.cpu_count()
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        #     executor.map(self.__generate_spectrograms_thread, paths)
-        for path in paths:
-            self.__generate_spectrograms_thread(path)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            executor.map(self.__generate_spectrograms_thread, paths)
+        # for path in paths:
+        #     self.__generate_spectrograms_thread(path)
 
     def __get_tensor_split_segments(self, sample_rate, tensor):
         segment_samples = sample_rate * self.audio_segment_length_in_sec
@@ -39,13 +41,16 @@ class WavTransform:
 
     def __generate_spectrograms_thread(self, path):
         file_name = os.path.basename(path)
-        y, sr = rosa.load(path, mono=True)
+        y, sr = librosa.load(path, mono=True)
         audio_tensors = self.__get_tensor_split_segments(sr, y)
         i = 0
-        pad_size = 5
         for audio_tensor in audio_tensors:
             mel_spectrogram = self.generate_mel_spectrogram_thread(audio_tensor, sr)
             chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
+            magphase_spectrogram = self.generate_magphase_spectrogram_thread(audio_tensor, sr)
+            # spectral_contrast = self.generate_spectral_contrast(audio_tensor, sr)
+            mfcc = self.generate_mfcc(audio_tensor, sr)
+            # stacked_tensor = tf.stack([mel_spectrogram, chroma_spectrogram, magphase_spectrogram, mfcc])
             stacked_tensor = tf.stack([mel_spectrogram, chroma_spectrogram])
             stacked_tensor = tf.io.serialize_tensor(stacked_tensor)
             tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ('_%04d' % i) + ".chr_spec",
@@ -53,37 +58,67 @@ class WavTransform:
             i += 1
 
     def generate_mel_spectrogram_thread(self, audio_tensor, sample_rate):
-        n_fft = 512
-        win_length = 512
-        mel_spectogram = rosa.feature.melspectrogram(audio_tensor, sample_rate, n_fft=n_fft, hop_length=self.hop_length,
-                                                     win_length=win_length, window=scipy.signal.windows.hanning,
-                                                     n_mels=256, power=4.0)
-        s_db = rosa.power_to_db(mel_spectogram, ref=np.max)
+        n_fft = self.win_length
+        win_length = self.win_length
+        mel_spectogram = librosa.feature.melspectrogram(audio_tensor, sample_rate, n_fft=n_fft,
+                                                        hop_length=self.hop_length,
+                                                        win_length=win_length, window=scipy.signal.windows.hanning,
+                                                        n_mels=self.y_scale, power=4.0)
+
+        s_db = librosa.power_to_db(mel_spectogram, ref=np.max)
         if self.use_clipping:
             s_db = np.clip(s_db, a_min=-50, a_max=None)
-        s_db = rosa.util.normalize(s_db)
+        s_db = librosa.util.normalize(s_db)
         if self.display_spectrograms:
-            rosa.display.specshow(s_db, sr=sample_rate, hop_length=self.hop_length, x_axis='time', y_axis='mel')
+            librosa.display.specshow(s_db, sr=sample_rate, hop_length=self.hop_length, x_axis='time', y_axis='mel')
             plt.colorbar(format='%+2.0f dB')
             plt.show()
             print(s_db.shape)
         return s_db
 
     def generate_chroma_spectrogram_thread(self,  audio_tensor, sample_rate):
-        # chroma = librosa.feature.chroma_stft(y=audio_tensor, sr=sample_rate, hop_length=self.hop_length, n_chroma=128,
-        #                                      win_length=512)
-        chroma = librosa.feature.chroma_cqt(y=audio_tensor, sr=sample_rate, hop_length=self.hop_length, n_chroma=256)
-        chroma = rosa.util.normalize(chroma)
+        s = librosa.feature.chroma_stft(y=audio_tensor, sr=sample_rate, n_chroma=self.y_scale,
+                                        hop_length=self.hop_length,
+                                        win_length=self.win_length, n_fft=self.win_length)
+        s = librosa.util.normalize(s)
         if self.display_spectrograms:
-            rosa.display.specshow(chroma, sr=sample_rate, y_axis='chroma', x_axis='time')
-            plt.colorbar()
+            librosa.display.specshow(s, sr=sample_rate, hop_length=self.hop_length, x_axis='time', y_axis='mel')
+            plt.colorbar(format='%+2.0f dB')
             plt.show()
-            print(chroma.shape)
-        return chroma
+        return s
+
+    def generate_magphase_spectrogram_thread(self, audio_tensor, sample_rate):
+        stft = librosa.stft(audio_tensor, n_fft=self.y_scale * 2, hop_length=self.hop_length)
+        s, phase = librosa.magphase(stft)
+        s = librosa.amplitude_to_db(s, ref=np.max)
+        s = librosa.util.normalize(s)
+        s = np.delete(s, 0, 0)
+        s = librosa.util.normalize(s)
+        if self.display_spectrograms:
+            librosa.display.specshow(s, y_axis='log', x_axis='time')
+            plt.show()
+        return s
+
+    def generate_spectral_contrast(self,  audio_tensor, sample_rate):
+        stft = librosa.stft(audio_tensor, n_fft=256, hop_length=self.hop_length)
+        s = librosa.feature.spectral_contrast(S=stft, sr=sample_rate)
+        if self.display_spectrograms:
+            librosa.display.specshow(s, y_axis='log', x_axis='time')
+            plt.show()
+        return s
+
+    def generate_mfcc(self,  audio_tensor, sample_rate):
+        s = librosa.feature.mfcc(y=audio_tensor, sr=sample_rate, hop_length=self.hop_length, n_mfcc=self.y_scale,
+                                 htk=True)
+        s = librosa.util.normalize(s)
+        if self.display_spectrograms:
+            librosa.display.specshow(s, y_axis='log', x_axis='time')
+            plt.show()
+        return s
 
     def downsample_wavs(self,  target_sample_rate):
         paths = self.meta_data.get_source_data_paths()
         for path in paths:
             file_name = os.path.basename(path)
-            y, s = rosa.load(path, sr=target_sample_rate, mono=True)
-            rosa.output.write_wav(self.meta_data.work_data_path + file_name, y, target_sample_rate, norm=True)
+            y, s = librosa.load(path, sr=target_sample_rate, mono=True)
+            librosa.output.write_wav(self.meta_data.work_data_path + file_name, y, target_sample_rate, norm=True)

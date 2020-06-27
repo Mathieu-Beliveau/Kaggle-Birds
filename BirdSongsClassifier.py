@@ -17,10 +17,10 @@ class BirdSongsClassifier:
         self.source_data_path = "/Temp_Wav/"
         self.work_data_path = "/spectrograms/"
         self.weights_filepath = "../Bird_Songs/Models/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
-        self.best_weights_file_path = "../Bird_Songs/Models/weights.20-1.50.hdf5"
-        self.load_saved_weights = False
+        self.best_weights_file_path = "../Bird_Songs/Models/weights.20-1.71.hdf5"
+        self.load_saved_weights = True
         self.log_dir = os.path.join('..\\Bird_Songs\\logs\\fit\\' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-        self.batch_size = 5
+        self.batch_size = 10
         self.meta_data = Mt.MetaData(self.base_path, self.source_data_path, self.work_data_path)
         self.wav_transform = WavTransform.WavTransform(self.meta_data, display_spectrograms=False, use_clipping=False)
         self.meta_data_cleaner = DataCleaner.DataCleaner(self.meta_data)
@@ -34,29 +34,27 @@ class BirdSongsClassifier:
     @staticmethod
     def lr_scheduler(epoch, lr):
         if epoch > 10:
-            lr = 0.00001
+            lr = 0.0001
             return lr
         return lr
 
     def perform_training(self):
         data_extractor = De.DataExtractor(self.meta_data, self.batch_size)
-        train_data, validation_data, test_data = data_extractor.get_datasets(train_ratio=0.70,
-                                                                             validation_ratio=0.15,
-                                                                             test_ratio=0.15)
+        train_data, validation_data, test_data = data_extractor.get_datasets(train_ratio=0.80,
+                                                                             validation_ratio=0.10,
+                                                                             test_ratio=0.10)
 
         model = models.Sequential()
-        model.add(layers.Conv2D(16, (10, 10), strides=(2, 2), input_shape=(256, 862, 2), activation='relu',
+        model.add(layers.Conv2D(32, (5, 5), strides=(2, 2), input_shape=(128, 862, 2), activation='relu',
                                 data_format='channels_last'))
         model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Conv2D(32, (10, 10), strides=(2, 2), activation='relu'))
-        # model.add(layers.MaxPooling2D((2, 2)))
-        # model.add(layers.Conv2D(64, (4, 4), strides=(1, 1), activation='relu'))
+        model.add(layers.Conv2D(64, (5, 5), strides=(1, 1), activation='relu'))
         model.add(layers.MaxPooling2D((2, 2)))
         model.add(layers.Flatten())
-        model.add(layers.Dense(64, activation='relu'))
+        model.add(layers.Dense(32, activation='relu'))
         model.add(layers.Dense(8, activation='softmax'))
         model.summary()
-        optimizer = tf.keras.optimizers.Adam(lr=0.0001)
+        optimizer = tf.keras.optimizers.Adam(lr=0.00001)
         model.compile(optimizer=optimizer,
                       loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
                       metrics=['accuracy'])
