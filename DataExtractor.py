@@ -91,7 +91,7 @@ class DataExtractor:
     def __load_spectrogram_data(self, file, label):
         spectrogram = tf.io.read_file(self.meta_data.work_data_path + file)
         spectrogram = tf.io.parse_tensor(spectrogram, tf.float32)
-        spectrogram = tf.reshape(spectrogram, (128, 862, 2))
+        spectrogram = tf.reshape(spectrogram, (128, 216, 1))
         return spectrogram, label
 
     def __standardize_dataset(self,  tensor, label):
