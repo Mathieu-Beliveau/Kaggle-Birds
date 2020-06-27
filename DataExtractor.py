@@ -8,15 +8,12 @@ import re
 
 class DataExtractor:
 
-    meta_data = None
-    dataset = None
-    dataset_size = None
-    means = None
-    std_deviation = None
-
-    def __init__(self, meta_data, batch_size, means_file_path=None, std_deviation_file_path=None):
+    def __init__(self, meta_data, batch_size, dataset_size_ratio=1, padding_size=0):
         self.meta_data = meta_data
         self.batch_size = batch_size
+        self.padding_size = padding_size
+        self.dataset_size = None
+        self.dataset_size_ratio = dataset_size_ratio
         self.label_regex = re.compile('^[^-]*-[^-]*')
         self.__create_dataset()
 
@@ -31,21 +28,48 @@ class DataExtractor:
             with open(suffled_paths_file, 'rb') as f:
                 paths_labels_pairs = pickle.load(f)
         else:
-            species = []
-            file_paths = []
-            for (dirpath, dirnames, filenames) in walk(self.meta_data.work_data_path):
-                file_paths = filenames
-                for filename in filenames:
-                    label = self.label_regex.match(filename).group()
-                    species.append(label)
-            one_hot_labels = self.__transform_labels_to_one_hot_vector(self, species)
-            paths_labels_pairs = [[path, label] for path, label in zip(file_paths, one_hot_labels)]
+            species, file_paths = self.__get_species_file_paths()
+            one_hot_labels = self.__transform_labels_to_one_hot_vector(species)
+            species_dict = self.__make_species_dict(file_paths, species, one_hot_labels)
+            paths_labels_pairs = self.__sample_species(self.dataset_size_ratio, species_dict)
             shuffle(paths_labels_pairs)
             with open(suffled_paths_file, 'wb') as f:
                 pickle.dump(paths_labels_pairs, f)
         shuffled_paths = [path for path, _ in paths_labels_pairs]
         shuffled_labels = [label for _, label in paths_labels_pairs]
+        self.dataset_size = len(shuffled_paths)
         return tf.data.Dataset.from_tensor_slices((shuffled_paths, shuffled_labels))
+
+    def __get_species_file_paths(self):
+        species = []
+        file_paths = []
+        for (dirpath, dirnames, filenames) in walk(self.meta_data.work_data_path):
+            file_paths = filenames
+            for filename in filenames:
+                label = self.label_regex.match(filename).group()
+                species.append(label)
+        return species, file_paths
+
+    @staticmethod
+    def __make_species_dict(file_paths, label, one_hot_labels):
+        species_dict = {}
+        for path, label, one_hot_label in zip(file_paths, label, one_hot_labels):
+            if label not in species_dict:
+                species_dict[label] = []
+            species_dict[label].append((path, one_hot_label))
+        return species_dict
+
+    @staticmethod
+    def __sample_species(ratio, species_dict):
+        samples = []
+        for specie in species_dict.keys():
+            specie_elements = species_dict[specie]
+            specie_size = len(specie_elements)
+            shuffle(specie_elements)
+            specie_sample_size = int(round(specie_size * ratio))
+            specie_samples = specie_elements[:specie_sample_size]
+            samples = samples + specie_samples
+        return samples
 
     def __load_means_and_std_deviation(self, means_file_path, std_deviation_file_path):
         means_content = tf.io.read_file(means_file_path)
@@ -80,8 +104,8 @@ class DataExtractor:
         if train_ratio + validation_ratio + test_ratio != 1:
             raise Exception("invalid train, validation or test ratios; they must sum to 1.")
 
-        train_size = round(self.meta_data.dataset_size * train_ratio)
-        validation_size = round(self.meta_data.dataset_size * validation_ratio)
+        train_size = round(self.dataset_size * train_ratio)
+        validation_size = round(self.dataset_size * validation_ratio)
         train_data = self.dataset.take(train_size).batch(self.batch_size)
         test_dataset = self.dataset.skip(train_size)
         validation_data = test_dataset.take(validation_size).batch(self.batch_size)
@@ -123,6 +147,6 @@ class DataExtractor:
         tf.io.write_file(variance_file_name, serialized_variance)
 
     @staticmethod
-    def __transform_labels_to_one_hot_vector(self, labels):
+    def __transform_labels_to_one_hot_vector(labels):
         labels_df = pd.DataFrame(labels)
         return pd.get_dummies(labels_df, dtype=float).values
