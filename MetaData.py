@@ -1,6 +1,3 @@
-import os
-
-
 class MetaData:
 
     def __init__(self, base_path, source_data_path, work_data_path):
