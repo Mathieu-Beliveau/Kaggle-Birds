@@ -1,12 +1,17 @@
 from ClassifierBase import ClassifierBase
 import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
+from CNNDataExtractor import CNNDataExtractor
 import os
 
 
 class CNNBirdSongsClassifier(ClassifierBase):
 
+    def get_data_extractor(self):
+        return CNNDataExtractor(self.meta_data, self.batch_size, self.classifier_type, dataset_size_ratio=1)
+
     def perform_training(self):
+        self.get_data()
         model = models.Sequential()
         model.add(layers.Conv2D(16, (10, 10), strides=(2, 2), input_shape=(128, 216, 3), activation='relu',
                                 data_format='channels_last'))

@@ -1,10 +1,13 @@
-from ClassifierBase import ClassifierBase
+from ClassifierBase import ClassifierBase, ClassifierType
 import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
 import os
 
 
 class LSTMBirdSongsClassifier(ClassifierBase):
+
+    def __init__(self):
+        super().__init__(ClassifierType.RNN)
 
     def perform_training(self):
         self.get_data()

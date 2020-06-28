@@ -6,13 +6,14 @@ import pickle
 import os
 import re
 
-class DataExtractor:
 
-    def __init__(self, meta_data, batch_size, dataset_size_ratio=1, padding_size=0):
+class DataExtractorBase:
+
+    def __init__(self, meta_data, batch_size, dataset_size_ratio=1):
         self.meta_data = meta_data
         self.batch_size = batch_size
-        self.padding_size = padding_size
         self.dataset_size = None
+        self.padding_size = None
         self.dataset_size_ratio = dataset_size_ratio
         self.label_regex = re.compile('^[^-]*-[^-]*')
         self.__create_dataset()
@@ -89,10 +90,13 @@ class DataExtractor:
         return wav_tensor, label
 
     def __load_spectrogram_data(self, file, label):
+        raise NotImplementedError()
+
+    def load_spectrogram(self, file):
         spectrogram = tf.io.read_file(self.meta_data.work_data_path + file)
         spectrogram = tf.io.parse_tensor(spectrogram, tf.float32)
         spectrogram = tf.reshape(spectrogram, (128, 216, 3))
-        return spectrogram, label
+        return spectrogram
 
     def __standardize_dataset(self,  tensor, label):
         if self.means is not None and self.std_deviation is not None:

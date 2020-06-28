@@ -1,14 +1,14 @@
-from DataExtractor import DataExtractor
+from DataExtractorBase import DataExtractor
 import MetaData as Mt
 import DataCleaner
 import WavTransform
 import os
 import datetime
-
+from enum import Enum
 
 class ClassifierBase:
 
-    def __init__(self):
+    def __init__(self, classifier_type):
         self.base_path = "../Bird_Songs/"
         self.source_data_path = "/test_wav/"
         self.work_data_path = "/test_spectrograms/"
@@ -23,9 +23,13 @@ class ClassifierBase:
         self.train_data = None
         self.validation_data = None
         self.test_data = None
+        self.classifier_type = classifier_type
+
+    def get_data_extractor(self):
+        raise NotImplementedError()
 
     def get_data(self):
-        data_extractor = DataExtractor(self.meta_data, self.batch_size, dataset_size_ratio=1)
+        data_extractor = self.get_data_extractor()
         self.train_data, self.validation_data, self.test_data = data_extractor.get_datasets(train_ratio=0.80,
                                                                                             validation_ratio=0.10,
                                                                                             test_ratio=0.10)
