@@ -5,6 +5,7 @@ import tensorflow as tf
 import pickle
 import os
 import re
+from abc import abstractmethod
 
 
 class DataExtractorBase:
@@ -20,7 +21,7 @@ class DataExtractorBase:
 
     def __create_dataset(self):
         self.dataset = self.__load_file_and_labels_dataset()
-        self.dataset = self.dataset.map(lambda data, label: self.__load_spectrogram_data(data, label))
+        self.dataset = self.dataset.map(lambda data, label: self.load_spectrogram_data(data, label))
         return self.dataset
 
     def __load_file_and_labels_dataset(self):
@@ -89,8 +90,9 @@ class DataExtractorBase:
             wav_tensor = tf.divide(wav_tensor, self.std_deviation)
         return wav_tensor, label
 
-    def __load_spectrogram_data(self, file, label):
-        raise NotImplementedError()
+    # @abstractmethod
+    # def __load_spectrogram_data(self, file, label):
+    #     raise NotImplementedError()
 
     def load_spectrogram(self, file):
         spectrogram = tf.io.read_file(self.meta_data.work_data_path + file)
