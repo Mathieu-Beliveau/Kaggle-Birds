@@ -17,7 +17,7 @@ class BirdSongsClassifier:
         self.source_data_path = "/test_wav/"
         self.work_data_path = "/test_spectrograms/"
         self.weights_filepath = "../Bird_Songs/Models/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
-        self.best_weights_file_path = "../Bird_Songs/Models/weights.50-1.68.hdf5"
+        self.best_weights_file_path = "../Bird_Songs/Models/weights.50-1.53.hdf5"
         self.load_saved_weights = True
         self.log_dir = os.path.join('..\\Bird_Songs\\logs\\fit\\' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         self.batch_size = 10
@@ -45,7 +45,7 @@ class BirdSongsClassifier:
                                                                              test_ratio=0.10)
 
         model = models.Sequential()
-        model.add(layers.Conv2D(16, (10, 10), strides=(2, 2), input_shape=(128, 216, 1), activation='relu',
+        model.add(layers.Conv2D(16, (10, 10), strides=(2, 2), input_shape=(128, 216, 3), activation='relu',
                                 data_format='channels_last'))
         model.add(layers.MaxPooling2D((2, 2)))
         model.add(layers.Conv2D(16, (10, 10), strides=(2, 2), activation='relu'))

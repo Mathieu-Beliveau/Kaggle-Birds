@@ -46,13 +46,13 @@ class WavTransform:
         i = 0
         for audio_tensor in audio_tensors:
             mel_spectrogram = self.generate_mel_spectrogram_thread(audio_tensor, sr)
-            #chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
+            chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
             magphase_spectrogram = self.generate_magphase_spectrogram_thread(audio_tensor, sr)
             # spectral_contrast = self.generate_spectral_contrast(audio_tensor, sr)
-            # mfcc = self.generate_mfcc(audio_tensor, sr)
+            mfcc = self.generate_mfcc(audio_tensor, sr)
             # stacked_tensor = tf.stack([mel_spectrogram, chroma_spectrogram, magphase_spectrogram, mfcc])
-            # stacked_tensor = tf.stack([mel_spectrogram, chroma_spectrogram])
-            stacked_tensor = tf.io.serialize_tensor(mel_spectrogram)
+            stacked_tensor = tf.stack([mel_spectrogram, mfcc, chroma_spectrogram])
+            stacked_tensor = tf.io.serialize_tensor(stacked_tensor)
             tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ('_%04d' % i) + ".chr_spec",
                              stacked_tensor)
             i += 1
