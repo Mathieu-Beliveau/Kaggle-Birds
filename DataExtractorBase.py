@@ -1,9 +1,6 @@
-from random import shuffle
 from abc import abstractmethod
 import tensorflow as tf
-import pickle
 import re
-import os
 
 
 class DataExtractorBase:
@@ -13,6 +10,8 @@ class DataExtractorBase:
         self.batch_size = batch_size
         self.dataset_size = None
         self.padding_size = None
+        self.label_vector_size = None
+        self.input_shape = None
         self.dataset_size_ratio = dataset_size_ratio
         self.label_regex = re.compile('^[^-]*-[^-]*')
         self.__create_dataset()
@@ -22,21 +21,14 @@ class DataExtractorBase:
         self.dataset = self.dataset.map(lambda data, label: self.load_spectrogram_data(data, label))
         return self.dataset
 
-
     def __load_file_and_labels_dataset(self):
-        suffled_paths_file = self.meta_data.base_path + "suffled_paths.pkl"
-        if os.path.isfile(suffled_paths_file):
-            with open(suffled_paths_file, 'rb') as f:
-                paths_labels_pairs = pickle.load(f)
-        else:
-            paths_labels_pairs = self.meta_data.get_data_paths_and_labels
-            shuffle(paths_labels_pairs)
-            with open(suffled_paths_file, 'wb') as f:
-                pickle.dump(paths_labels_pairs, f)
-        shuffled_paths = [path for path, _ in paths_labels_pairs]
-        shuffled_labels = [label for _, label in paths_labels_pairs]
-        self.dataset_size = len(shuffled_paths)
-        return tf.data.Dataset.from_tensor_slices((shuffled_paths, shuffled_labels))
+        paths, labels = self.meta_data.load_file_and_labels_dataset()
+        self.dataset_size = len(paths)
+        file_stream = tf.io.read_file(self.meta_data.work_data_path + paths[0])
+        tensor = tf.io.parse_tensor(file_stream, tf.float32)
+        self.input_shape = tensor.shape
+        self.label_vector_size = labels[0].shape[0]
+        return tf.data.Dataset.from_tensor_slices((paths, labels))
 
     @abstractmethod
     def load_spectrogram_data(self, data, label):

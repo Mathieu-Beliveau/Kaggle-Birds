@@ -1,5 +1,4 @@
 import MetaData as Mt
-import DataCleaner
 import WavTransform
 import os
 import datetime
@@ -7,13 +6,18 @@ import datetime
 
 class ClassifierBase:
 
-    def __init__(self, meta_data):
+    def __init__(self, meta_data, batch_size, train_ratio=0.8,
+                 validation_ratio=0.1, test_ratio=0.1, load_saved_weights=True):
         self.meta_data = meta_data
         self.weights_filepath = "../Bird_Songs/Models/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
-        self.best_weights_file_path = "../Bird_Songs/Models/weights.50-1.53.hdf5"
-        self.load_saved_weights = True
+        self.load_saved_weights = load_saved_weights
         self.log_dir = os.path.join('..\\Bird_Songs\\logs\\fit\\' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-        self.batch_size = 10
+        self.batch_size = batch_size
+        self.train_ratio = train_ratio
+        self.valitation_ratio = validation_ratio
+        self.test_ratio = test_ratio
+        self.input_shape = None
+        self.label_size = None
         self.train_data = None
         self.validation_data = None
         self.test_data = None
@@ -23,9 +27,12 @@ class ClassifierBase:
 
     def get_data(self):
         data_extractor = self.get_data_extractor()
-        self.train_data, self.validation_data, self.test_data = data_extractor.get_datasets(train_ratio=0.80,
-                                                                                            validation_ratio=0.10,
-                                                                                            test_ratio=0.10)
+        self.label_size = data_extractor.label_vector_size
+        self.input_shape = data_extractor.input_shape
+        self.train_data, self.validation_data, self.test_data = \
+            data_extractor.get_datasets(train_ratio=self.train_ratio,
+                                        validation_ratio=self.valitation_ratio,
+                                        test_ratio=self.valitation_ratio)
 
     @staticmethod
     def lr_scheduler(epoch, lr):

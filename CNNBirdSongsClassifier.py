@@ -8,7 +8,10 @@ import os
 class CNNBirdSongsClassifier(ClassifierBase):
 
     def __init__(self, meta_data):
-        super(CNNBirdSongsClassifier, self).__init__(meta_data)
+        self.best_weights_file_path = "weights.50-1.53.hdf5"
+        super(CNNBirdSongsClassifier, self).__init__(meta_data, batch_size=10, train_ratio=0.8,
+                                                     validation_ratio=0.1, test_ratio=0.1,
+                                                     load_saved_weights=True)
 
     def get_data_extractor(self):
         return CNNDataExtractor(self.meta_data, self.batch_size, dataset_size_ratio=1)
@@ -24,7 +27,7 @@ class CNNBirdSongsClassifier(ClassifierBase):
         model.add(layers.Flatten())
         model.add(layers.Dense(100, activation='relu'))
         model.add(layers.Dropout(0.2))
-        model.add(layers.Dense(9, activation='softmax'))
+        model.add(layers.Dense(self.label_size, activation='softmax'))
         model.summary()
         optimizer = tf.keras.optimizers.Adam(lr=0.0001)
         model.compile(optimizer=optimizer,

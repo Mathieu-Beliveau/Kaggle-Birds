@@ -23,9 +23,7 @@ class WavTransform:
         self.audio_segment_length_in_sec = 10
 
     def generate_spectrograms(self):
-        paths = []
-        for (dirpath, dirnames, filenames) in os.walk(self.meta_data.source_data_path):
-            paths = [dirpath + filename for filename in filenames]
+        paths = self.meta_data.get_source_wavs()
         max_workers = multiprocessing.cpu_count()
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.__generate_spectrograms_thread, paths)
