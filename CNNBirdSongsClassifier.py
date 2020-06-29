@@ -7,6 +7,9 @@ import os
 
 class CNNBirdSongsClassifier(ClassifierBase):
 
+    def __init__(self, meta_data):
+        super(CNNBirdSongsClassifier, self).__init__(meta_data)
+
     def get_data_extractor(self):
         return CNNDataExtractor(self.meta_data, self.batch_size, dataset_size_ratio=1)
 
