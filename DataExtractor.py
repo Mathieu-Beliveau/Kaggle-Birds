@@ -3,7 +3,7 @@ import tensorflow as tf
 import re
 
 
-class DataExtractorBase:
+class DataExtractor:
 
     def __init__(self, meta_data, batch_size, dataset_size_ratio=1):
         self.meta_data = meta_data
