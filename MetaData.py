@@ -87,18 +87,19 @@ class MetaData:
 
     @staticmethod
     def get_label_for_meta_data_row(meta_data_row):
-        call_types = meta_data_row['Vocalization_type'].item()
-        call_types_arr = call_types.split(',')
-        male = "male"
-        female = "female"
-        if female in call_types_arr and male in call_types_arr:
-            return meta_data_row['Species'].item()
-        elif female in call_types_arr:
-            return meta_data_row['Species'].item() + "_" + female
-        elif male in call_types_arr:
-            return meta_data_row['Species'].item() + "_" + male
-        else:
-            return meta_data_row['Species'].item()
+        return meta_data_row['Species'].item()
+        # call_types = meta_data_row['Vocalization_type'].item()
+        # call_types_arr = call_types.split(',')
+        # male = "male"
+        # female = "female"
+        # if female in call_types_arr and male in call_types_arr:
+        #     return meta_data_row['Species'].item()
+        # elif female in call_types_arr:
+        #     return meta_data_row['Species'].item() + "_" + female
+        # elif male in call_types_arr:
+        #     return meta_data_row['Species'].item() + "_" + male
+        # else:
+        #     return meta_data_row['Species'].item()
 
     # Filters
     @staticmethod

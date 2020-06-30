@@ -8,7 +8,7 @@ import os
 class CNNBirdSongsClassifier(ClassifierBase):
 
     def __init__(self, meta_data):
-        self.best_weights_file_path = "weights.50-1.53.hdf5"
+        self.best_weights_file_path = "Models/weights.50-1.60.hdf5"
         super(CNNBirdSongsClassifier, self).__init__(meta_data, batch_size=10, train_ratio=0.8,
                                                      validation_ratio=0.1, test_ratio=0.1,
                                                      load_saved_weights=True)
@@ -39,8 +39,8 @@ class CNNBirdSongsClassifier(ClassifierBase):
         learning_rate_scheduler = tf.keras.callbacks.LearningRateScheduler(CNNBirdSongsClassifier.lr_scheduler)
         callbacks_list = [learning_rate_scheduler, checkpoint, tensorboard_callback]
 
-        if self.load_saved_weights and os.path.isfile(self.best_weights_file_path):
-            model.load_weights(self.best_weights_file_path)
+        if self.load_saved_weights and os.path.isfile(self.meta_data.base_path + self.best_weights_file_path):
+            model.load_weights(self.meta_data.base_path + self.best_weights_file_path)
 
         model.fit(x=self.train_data, epochs=50, shuffle=True, validation_data=self.validation_data,
                   callbacks=callbacks_list)
