@@ -44,16 +44,30 @@ class WavTransform:
         i = 0
         for audio_tensor in audio_tensors:
             mel_spectrogram = self.generate_mel_spectrogram_thread(audio_tensor, sr)
-            chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
+            # chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
             magphase_spectrogram = self.generate_magphase_spectrogram_thread(audio_tensor, sr)
             # spectral_contrast = self.generate_spectral_contrast(audio_tensor, sr)
-            mfcc = self.generate_mfcc(audio_tensor, sr)
+            # mfcc = self.generate_mfcc(audio_tensor, sr)
             # stacked_tensor = tf.stack([mel_spectrogram, chroma_spectrogram, magphase_spectrogram, mfcc])
-            stacked_tensor = tf.stack([mel_spectrogram, mfcc, chroma_spectrogram])
+            stacked_tensor = mel_spectrogram
+            # stacked_tensor = self.transform_spectrogram_data_into_time_series(stacked_tensor)
             stacked_tensor = tf.io.serialize_tensor(stacked_tensor)
             tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ('_%04d' % i) + ".chr_spec",
                              stacked_tensor)
             i += 1
+
+    def transform_spectrogram_data_into_time_series(self, spectrogram_tensor):
+        tensors = []
+        window_length = 16
+        hop_size = 8
+        upper_limit = window_length
+        for i in range(0, spectrogram_tensor.shape[1], hop_size):
+            if upper_limit > spectrogram_tensor.shape[1]:
+                break
+            tensors.append(spectrogram_tensor[:, i:upper_limit])
+            upper_limit += hop_size
+        time_spectrogram = tf.stack(tensors, axis=0)
+        return time_spectrogram
 
     def generate_mel_spectrogram_thread(self, audio_tensor, sample_rate):
         n_fft = self.win_length
