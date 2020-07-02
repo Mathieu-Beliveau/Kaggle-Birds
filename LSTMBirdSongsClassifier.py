@@ -4,24 +4,27 @@ from tensorflow.keras import datasets, layers, models
 import os
 
 
-class ConvLSTM2DBirdSongsClassifier(ClassifierBase):
+class LSTMBirdSongsClassifier(ClassifierBase):
 
     def __init__(self, meta_data):
         self.best_weights_file_path = "Models/weights.50-1.60.hdf5"
-        super(ConvLSTM2DBirdSongsClassifier, self).__init__(meta_data, batch_size=10, train_ratio=0.8,
-                                                            validation_ratio=0.1, test_ratio=0.1,
-                                                            load_saved_weights=False)
+        super(LSTMBirdSongsClassifier, self).__init__(meta_data, batch_size=10, train_ratio=0.8,
+                                                      validation_ratio=0.1, test_ratio=0.1,
+                                                      load_saved_weights=False)
 
     def perform_training(self):
         self.get_data()
         model = models.Sequential()
-        model.add(layers.ConvLSTM2D(filters=8, kernel_size=(5, 5), strides=(2, 2), input_shape=(26, 128, 16, 1),
-                                    data_format='channels_last', return_sequences=True))
+        model.add(layers.LSTM(units=128, return_sequences=True,
+                              input_shape=(216, 128)))
+        model.add(layers.Dropout(0.1))
         model.add(layers.BatchNormalization())
-        model.add(layers.ConvLSTM2D(filters=8, kernel_size=(4, 4), strides=(2, 2), return_sequences=False))
+        model.add(layers.LSTM(units=128, return_sequences=False))
+        model.add(layers.Dropout(0.1))
         model.add(layers.BatchNormalization())
-        model.add(layers.AveragePooling2D())
         model.add(layers.Flatten())
+        model.add(layers.Dense(128, activation='relu'))
+        model.add(layers.Dropout(0.1))
         model.add(layers.Dense(9, activation='softmax'))
         model.summary()
         optimizer = tf.keras.optimizers.Adam(lr=0.001)

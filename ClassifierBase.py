@@ -1,7 +1,8 @@
 import MetaData as Mt
-import WavTransform
+import WavTransformBase
 import os
 import datetime
+from DataExtractor import DataExtractor
 
 
 class ClassifierBase:
@@ -22,11 +23,8 @@ class ClassifierBase:
         self.validation_data = None
         self.test_data = None
 
-    def get_data_extractor(self):
-        raise NotImplementedError()
-
     def get_data(self):
-        data_extractor = self.get_data_extractor()
+        data_extractor = DataExtractor(self.meta_data, self.batch_size)
         self.label_size = data_extractor.label_vector_size
         self.input_shape = data_extractor.input_shape
         self.train_data, self.validation_data, self.test_data = \

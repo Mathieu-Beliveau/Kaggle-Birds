@@ -17,9 +17,9 @@ class ConvLSTM2DBirdSongsClassifier(ClassifierBase):
         model = models.Sequential()
         model.add(layers.ConvLSTM2D(filters=8, kernel_size=(5, 5), strides=(2, 2), input_shape=(26, 128, 16, 1),
                                     data_format='channels_last', return_sequences=True))
-        # model.add(layers.BatchNormalization())
+        model.add(layers.BatchNormalization())
         model.add(layers.ConvLSTM2D(filters=8, kernel_size=(4, 4), strides=(2, 2), return_sequences=False))
-        # model.add(layers.BatchNormalization())
+        model.add(layers.BatchNormalization())
         model.add(layers.AveragePooling2D())
         model.add(layers.Flatten())
         model.add(layers.Dense(9, activation='softmax'))

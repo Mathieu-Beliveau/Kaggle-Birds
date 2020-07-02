@@ -9,3 +9,5 @@ n_fft = 1024
 hop_length = 128
 win_length = 512
 Resulting accuracy on validation: ???
+
+input shape for convlstm2: (26, 128, 16, 1)

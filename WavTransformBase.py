@@ -3,32 +3,33 @@ import librosa.display
 import os
 import multiprocessing
 import concurrent.futures
-import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
+import abc
+import tensorflow as tf
 
 
-class WavTransform:
+class WavTransformBase:
 
     meta_data = None
 
-    def __init__(self, meta_data, display_spectrograms=False, use_clipping=True):
+    def __init__(self, meta_data, audio_segment_length_in_sec=10, display_spectrograms=False, use_clipping=False):
         self.meta_data = meta_data
         self.display_spectrograms = display_spectrograms
         self.use_clipping = use_clipping
         self.hop_length = 1024
         self.win_length = 1024
         self.y_scale = 128
-        self.audio_segment_length_in_sec = 10
+        self.audio_segment_length_in_sec = audio_segment_length_in_sec
 
     def generate_spectrograms(self):
         paths = self.meta_data.get_source_wavs()
         max_workers = multiprocessing.cpu_count()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            executor.map(self.__generate_spectrograms_thread, paths)
-        # for path in paths:
-        #     self.__generate_spectrograms_thread(path)
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        #     executor.map(self.__generate_spectrograms_thread, paths)
+        for path in paths:
+            self.__generate_spectrograms_thread(path)
 
     def __get_tensor_split_segments(self, sample_rate, tensor):
         segment_samples = sample_rate * self.audio_segment_length_in_sec
@@ -43,31 +44,15 @@ class WavTransform:
         audio_tensors = self.__get_tensor_split_segments(sr, y)
         i = 0
         for audio_tensor in audio_tensors:
-            mel_spectrogram = self.generate_mel_spectrogram_thread(audio_tensor, sr)
-            # chroma_spectrogram = self.generate_chroma_spectrogram_thread(audio_tensor, sr)
-            magphase_spectrogram = self.generate_magphase_spectrogram_thread(audio_tensor, sr)
-            # spectral_contrast = self.generate_spectral_contrast(audio_tensor, sr)
-            # mfcc = self.generate_mfcc(audio_tensor, sr)
-            # stacked_tensor = tf.stack([mel_spectrogram, chroma_spectrogram, magphase_spectrogram, mfcc])
-            stacked_tensor = mel_spectrogram
-            # stacked_tensor = self.transform_spectrogram_data_into_time_series(stacked_tensor)
-            stacked_tensor = tf.io.serialize_tensor(stacked_tensor)
+            spectrogram = self.generate_spectrograms_thread_specialized(audio_tensor, sr)
+            spectrogram_serialized = tf.io.serialize_tensor(spectrogram)
             tf.io.write_file(self.meta_data.work_data_path + file_name[:-4] + ('_%04d' % i) + ".chr_spec",
-                             stacked_tensor)
+                             spectrogram_serialized)
             i += 1
 
-    def transform_spectrogram_data_into_time_series(self, spectrogram_tensor):
-        tensors = []
-        window_length = 16
-        hop_size = 8
-        upper_limit = window_length
-        for i in range(0, spectrogram_tensor.shape[1], hop_size):
-            if upper_limit > spectrogram_tensor.shape[1]:
-                break
-            tensors.append(spectrogram_tensor[:, i:upper_limit])
-            upper_limit += hop_size
-        time_spectrogram = tf.stack(tensors, axis=0)
-        return time_spectrogram
+    @abc.abstractmethod
+    def generate_spectrograms_thread_specialized(self, audio_tensor, sample_rate):
+        raise NotImplementedError
 
     def generate_mel_spectrogram_thread(self, audio_tensor, sample_rate):
         n_fft = self.win_length

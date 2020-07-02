@@ -30,14 +30,14 @@ class DataExtractor:
         self.label_vector_size = labels[0].shape[0]
         return tf.data.Dataset.from_tensor_slices((paths, labels))
 
-    @abstractmethod
     def load_spectrogram_data(self, data, label):
-        raise NotImplementedError
+        spectrogram = self.load_spectrogram(data)
+        return spectrogram, label
 
     def load_spectrogram(self, file):
         spectrogram = tf.io.read_file(self.meta_data.work_data_path + file)
         spectrogram = tf.io.parse_tensor(spectrogram, tf.float32)
-        spectrogram = tf.reshape(spectrogram, (128, 216, 3))
+        spectrogram = tf.reshape(spectrogram, (216, 128))
         return spectrogram
 
     def get_datasets(self, train_ratio, validation_ratio, test_ratio, epochs=1):
