@@ -26,10 +26,10 @@ class WavTransformBase:
     def generate_spectrograms(self):
         paths = self.meta_data.get_source_wavs()
         max_workers = multiprocessing.cpu_count()
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        #     executor.map(self.__generate_spectrograms_thread, paths)
-        for path in paths:
-            self.__generate_spectrograms_thread(path)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            executor.map(self.__generate_spectrograms_thread, paths)
+        # for path in paths:
+        #     self.__generate_spectrograms_thread(path)
 
     def __get_tensor_split_segments(self, sample_rate, tensor):
         segment_samples = sample_rate * self.audio_segment_length_in_sec

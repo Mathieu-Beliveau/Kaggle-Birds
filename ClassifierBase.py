@@ -10,9 +10,9 @@ class ClassifierBase:
     def __init__(self, meta_data, batch_size, train_ratio=0.8,
                  validation_ratio=0.1, test_ratio=0.1, load_saved_weights=True):
         self.meta_data = meta_data
-        self.weights_filepath = "../Bird_Songs/Models/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
+        self.weights_filepath = self.meta_data.base_path + "/models/weights.{epoch:02d}-{val_loss:.2f}.hdf5"
         self.load_saved_weights = load_saved_weights
-        self.log_dir = os.path.join('..\\Bird_Songs\\logs\\fit\\' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+        self.log_dir = os.path.join(self.meta_data.base_path + '/logs/fit/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         self.batch_size = batch_size
         self.train_ratio = train_ratio
         self.valitation_ratio = validation_ratio

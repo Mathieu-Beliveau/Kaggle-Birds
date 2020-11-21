@@ -36,8 +36,11 @@ class MetaData:
                                                     'Emberiza citrinella',
                                                     'Sylvia atricapilla',
                                                     'Emberiza calandra'], sample_ratio=1),
-                lambda df: self.filter_audio_length(df, max_length_in_minutes=20),
-                lambda df: self.filter_multi_species_audio(df, max_other_species_allowed=3)]
+                lambda df: self.filter_audio_length(df, max_length_in_minutes=20)
+                ]
+
+    # Temporarily disabled
+    # lambda df: self.filter_multi_species_audio(df, max_other_species_allowed=3)
 
     def load_file_and_labels_dataset(self):
         suffled_paths_file = self.base_path + "suffled_paths.pkl"
@@ -157,4 +160,3 @@ class MetaData:
         one_hot_labels = pd.get_dummies(labels_df, dtype=float).values
         return [(file_with_label[0], one_hot_label) for one_hot_label, file_with_label in zip(one_hot_labels,
                                                                                               files_with_label)]
-

@@ -1,3 +1,4 @@
+import os
 from MetaData import MetaData
 from CNNBirdSongsClassifier import CNNBirdSongsClassifier
 from WavTransformCNN import WavTransformCNN
@@ -6,10 +7,13 @@ from WavTransformConvLSTM2D import WavTransformConvLSTM2D
 from LSTMBirdSongsClassifier import LSTMBirdSongsClassifier
 from WavTransformLSTM import WavTransformLSTM
 
-base_path = "../Bird_Songs/"
-source_data_path = "/Source_Wav/"
-work_data_path = "/test_spectrograms/"
-meta_data_file_path = "metadata_clean.csv"
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+
+
+base_path = "../Data/BirdSongs/"
+source_data_path = "/wavs/"
+work_data_path = "/spectrograms/"
+meta_data_file_path = "metadata.csv"
 meta_data = MetaData(base_path, source_data_path, work_data_path, meta_data_file_path)
 
 # CNN Classification
